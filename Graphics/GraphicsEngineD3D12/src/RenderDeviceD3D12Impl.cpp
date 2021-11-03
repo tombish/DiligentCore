@@ -536,7 +536,13 @@ void RenderDeviceD3D12Impl::CreateBuffer(const BufferDesc& BuffDesc, const Buffe
 
 void RenderDeviceD3D12Impl::CreateShader(const ShaderCreateInfo& ShaderCI, IShader** ppShader)
 {
-    CreateShaderImpl(ppShader, ShaderCI);
+    const ShaderD3D12Impl::CreateInfo D3D12ShaderCI{
+        GetDxCompiler(),
+        GetDeviceInfo(),
+        GetAdapterInfo(),
+        GetMaxShaderVersion() //
+    };
+    CreateShaderImpl(ppShader, ShaderCI, D3D12ShaderCI);
 }
 
 void RenderDeviceD3D12Impl::CreateTextureFromD3DResource(ID3D12Resource* pd3d12Texture, RESOURCE_STATE InitialState, ITexture** ppTexture)
@@ -632,6 +638,13 @@ void RenderDeviceD3D12Impl::CreatePipelineResourceSignature(const PipelineResour
                                                             bool                                 IsDeviceInternal)
 {
     CreatePipelineResourceSignatureImpl(ppSignature, Desc, ShaderStages, IsDeviceInternal);
+}
+
+void RenderDeviceD3D12Impl::CreatePipelineResourceSignature(const PipelineResourceSignatureDesc&                      Desc,
+                                                            const PipelineResourceSignatureD3D12Impl::SerializedData& SerializedData,
+                                                            IPipelineResourceSignature**                              ppSignature)
+{
+    CreatePipelineResourceSignatureImpl(ppSignature, Desc, SerializedData);
 }
 
 DescriptorHeapAllocation RenderDeviceD3D12Impl::AllocateDescriptors(D3D12_DESCRIPTOR_HEAP_TYPE Type, UINT Count /*= 1*/)
