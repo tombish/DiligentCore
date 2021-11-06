@@ -190,9 +190,8 @@ public:
     PipelineResourceSignatureBase(IReferenceCounters*                            pRefCounters,
                                   RenderDeviceImplType*                          pDevice,
                                   const PipelineResourceSignatureDesc&           Desc,
-                                  const PipelineResourceSignatureSerializedData& Serialized,
-                                  bool                                           bIsDeviceInternal = false) :
-        TDeviceObjectBase{pRefCounters, pDevice, Desc, bIsDeviceInternal},
+                                  const PipelineResourceSignatureSerializedData& Serialized) :
+        TDeviceObjectBase{pRefCounters, pDevice, Desc, false /*bIsDeviceInternal*/},
         m_ShaderStages{Serialized.ShaderStages},
         m_StaticResShaderStages{Serialized.StaticResShaderStages},
         m_PipelineType{Serialized.PipelineType},

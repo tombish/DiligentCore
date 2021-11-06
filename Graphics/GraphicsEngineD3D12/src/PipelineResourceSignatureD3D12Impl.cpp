@@ -816,7 +816,7 @@ PipelineResourceSignatureD3D12Impl::PipelineResourceSignatureD3D12Impl(IReferenc
                                                                        RenderDeviceD3D12Impl*               pDevice,
                                                                        const PipelineResourceSignatureDesc& Desc,
                                                                        const SerializedData&                Serialized) :
-    TPipelineResourceSignatureBase{pRefCounters, pDevice, Desc, Serialized.Base, false}
+    TPipelineResourceSignatureBase{pRefCounters, pDevice, Desc, Serialized.Base}
 {
     try
     {

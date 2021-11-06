@@ -915,7 +915,7 @@ PipelineResourceSignatureVkImpl::PipelineResourceSignatureVkImpl(IReferenceCount
                                                                  RenderDeviceVkImpl*                  pDevice,
                                                                  const PipelineResourceSignatureDesc& Desc,
                                                                  const SerializedData&                Serialized) :
-    TPipelineResourceSignatureBase{pRefCounters, pDevice, Desc, Serialized.Base, false}
+    TPipelineResourceSignatureBase{pRefCounters, pDevice, Desc, Serialized.Base}
 //m_DynamicUniformBufferCount{Serialized.DynamicUniformBufferCount}
 //m_DynamicStorageBufferCount{Serialized.DynamicStorageBufferCount}
 {
