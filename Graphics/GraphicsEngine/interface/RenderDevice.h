@@ -310,6 +310,18 @@ DILIGENT_BEGIN_INTERFACE(IRenderDevice, IObject)
                                             IDeviceMemory**                  ppMemory) PURE;
 
 
+    /// Creates a pipeline state cache object.
+
+    /// \param [in]  CreateInfo - Pipeline state cache create info, see Diligent::PSOCacheCreateInfo for details.
+    /// \param [out] ppPSOCache - Address of the memory location where the pointer to the
+    ///                           pipeline state cache interface will be stored.
+    ///                           The function calls AddRef(), so that the new object will have
+    ///                           one reference.
+    VIRTUAL void METHOD(CreatePSOCache)(THIS_
+                                        const PSOCacheCreateInfo REF CreateInfo,
+                                        IPSOCache**                  ppPSOCache) PURE;
+
+
     /// Returns the device information, see Diligent::RenderDeviceInfo for details.
     VIRTUAL const RenderDeviceInfo REF METHOD(GetDeviceInfo)(THIS) CONST PURE;
 

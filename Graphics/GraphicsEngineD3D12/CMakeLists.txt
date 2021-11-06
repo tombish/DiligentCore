@@ -20,6 +20,7 @@ set(INCLUDE
     include/DescriptorHeap.hpp
     include/DeviceContextD3D12Impl.hpp
     include/DeviceMemoryD3D12Impl.hpp
+    include/DeviceObjectArchiveD3D12Impl.hpp
     include/EngineD3D12ImplTraits.hpp
     include/FenceD3D12Impl.hpp
     include/FramebufferD3D12Impl.hpp
@@ -28,6 +29,7 @@ set(INCLUDE
     include/PipelineResourceAttribsD3D12.hpp
     include/PipelineResourceSignatureD3D12Impl.hpp
     include/PipelineStateD3D12Impl.hpp
+    include/PSOCacheD3D12Impl.hpp
     include/QueryD3D12Impl.hpp
     include/QueryManagerD3D12.hpp
     include/RenderDeviceD3D12Impl.hpp
@@ -35,6 +37,7 @@ set(INCLUDE
     include/RootParamsManager.hpp
     include/RootSignature.hpp
     include/SamplerD3D12Impl.hpp
+    include/SerializationAPID3D12Impl.hpp
     include/ShaderBindingTableD3D12Impl.hpp
     include/ShaderD3D12Impl.hpp
     include/ShaderResourceBindingD3D12Impl.hpp
@@ -57,6 +60,7 @@ set(INTERFACE
     interface/EngineFactoryD3D12.h
     interface/FenceD3D12.h
     interface/PipelineStateD3D12.h
+    interface/PSOCacheD3D12.h
     interface/QueryD3D12.h
     interface/RenderDeviceD3D12.h
     interface/SamplerD3D12.h
@@ -82,12 +86,14 @@ set(SRC
     src/DescriptorHeap.cpp
     src/DeviceContextD3D12Impl.cpp
     src/DeviceMemoryD3D12Impl.cpp
+    src/DeviceObjectArchiveD3D12Impl.cpp
     src/EngineFactoryD3D12.cpp
     src/FenceD3D12Impl.cpp
     src/FramebufferD3D12Impl.cpp
     src/GenerateMips.cpp
     src/PipelineResourceSignatureD3D12Impl.cpp
     src/PipelineStateD3D12Impl.cpp
+    src/PSOCacheD3D12Impl.cpp
     src/QueryD3D12Impl.cpp
     src/QueryManagerD3D12.cpp
     src/RenderDeviceD3D12Impl.cpp
@@ -95,6 +101,7 @@ set(SRC
     src/RootParamsManager.cpp
     src/RootSignature.cpp
     src/SamplerD3D12Impl.cpp
+    src/SerializationAPID3D12Impl.cpp
     src/ShaderBindingTableD3D12Impl.cpp
     src/ShaderD3D12Impl.cpp
     src/ShaderResourceBindingD3D12Impl.cpp

@@ -12,6 +12,7 @@ set(INCLUDE
     include/DeviceContextBase.hpp
     include/DeviceMemoryBase.hpp
     include/DeviceObjectBase.hpp
+    include/DeviceObjectArchiveBase.hpp
     include/EngineFactoryBase.hpp
     include/EngineMemory.h
     include/FenceBase.hpp
@@ -19,12 +20,14 @@ set(INCLUDE
     include/IndexWrapper.hpp
     include/PipelineStateBase.hpp
     include/PipelineResourceSignatureBase.hpp
+    include/PSOCacheBase.hpp
     include/PrivateConstants.h
     include/QueryBase.hpp
     include/RenderDeviceBase.hpp
     include/RenderPassBase.hpp
     include/ResourceMappingImpl.hpp
     include/SamplerBase.hpp
+    include/SerializationAPIBase.hpp
     include/ShaderBase.hpp
     include/ShaderResourceBindingBase.hpp
     include/ShaderResourceCacheCommon.hpp
@@ -35,8 +38,7 @@ set(INCLUDE
     include/TextureBase.hpp
     include/TextureViewBase.hpp
     include/TopLevelASBase.hpp
-    include/ShaderBindingTableBase.hpp
-    include/PipelineResourceSignatureBase.hpp
+    include/Serializer.hpp
 )
 
 set(INTERFACE 
@@ -52,6 +54,7 @@ set(INTERFACE
     interface/DeviceContext.h
     interface/DeviceMemory.h
     interface/DeviceObject.h
+    interface/DeviceObjectArchive.h
     interface/EngineFactory.h
     interface/Fence.h
     interface/Framebuffer.h
@@ -59,12 +62,14 @@ set(INTERFACE
     interface/InputLayout.h
     interface/PipelineState.h
     interface/PipelineResourceSignature.h
+    interface/PSOCache.h
     interface/Query.h
     interface/RasterizerState.h
     interface/RenderDevice.h
     interface/RenderPass.h
     interface/ResourceMapping.h
     interface/Sampler.h
+    interface/SerializationAPI.h
     interface/Shader.h
     interface/ShaderResourceBinding.h
     interface/ShaderResourceVariable.h
@@ -86,16 +91,19 @@ set(SOURCE
     src/DefaultShaderSourceStreamFactory.cpp
     src/DeviceContextBase.cpp
     src/DeviceMemoryBase.cpp
+    src/DeviceObjectArchiveBase.cpp
     src/EngineMemory.cpp
     src/EngineFactoryBase.cpp
     src/FramebufferBase.cpp
     src/PipelineResourceSignatureBase.cpp
     src/PipelineStateBase.cpp
+    src/PSOCacheBase.cpp
     src/RenderDeviceBase.cpp
     src/ResourceMappingBase.cpp
     src/RenderPassBase.cpp
     src/ShaderBindingTableBase.cpp
     src/SamplerBase.cpp
+    src/SerializationAPIBase.cpp
     src/TextureBase.cpp
     src/TopLevelASBase.cpp
 )

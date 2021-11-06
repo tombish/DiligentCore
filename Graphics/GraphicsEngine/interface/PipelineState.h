@@ -45,6 +45,7 @@
 #include "Sampler.h"
 #include "RenderPass.h"
 #include "PipelineResourceSignature.h"
+#include "PSOCache.h"
 
 DILIGENT_BEGIN_NAMESPACE(Diligent)
 
@@ -434,6 +435,9 @@ DILIGENT_TYPED_ENUM(PSO_CREATE_FLAGS, Uint32)
     /// that is not found in any of the designated shader stages.
     /// Use this flag to silence these warnings.
     PSO_CREATE_FLAG_IGNORE_MISSING_IMMUTABLE_SAMPLERS = 0x02,
+
+    /// AZ TODO
+    PSO_CREATE_FLAG_DONT_REMAP_SHADER_RESOURCES       = 0x04,
 };
 DEFINE_FLAG_ENUM_OPERATORS(PSO_CREATE_FLAGS);
 
@@ -467,6 +471,9 @@ struct PipelineStateCreateInfo
     // another struct is derived from PipelineStateCreateInfo, though, the compiler may place
     // another member in this space. To fix this, we add padding.
     Uint32 _Padding;
+
+    /// PSODesc.Name must be unique to add PSO into cache (D3D12 requirements)
+    IPSOCache* pPSOCache DEFAULT_INITIALIZER(nullptr);
 };
 typedef struct PipelineStateCreateInfo PipelineStateCreateInfo;
 

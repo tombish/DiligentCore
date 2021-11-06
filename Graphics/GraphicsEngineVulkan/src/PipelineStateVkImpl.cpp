@@ -37,6 +37,7 @@
 #include "ShaderVkImpl.hpp"
 #include "RenderPassVkImpl.hpp"
 #include "ShaderResourceBindingVkImpl.hpp"
+#include "PSOCacheVkImpl.hpp"
 
 #include "VulkanTypeConversions.hpp"
 #include "EngineMemory.h"
@@ -54,7 +55,7 @@ namespace Diligent
 namespace
 {
 
-bool StripReflection(const VulkanUtilities::VulkanLogicalDevice& LogicalDevice, std::vector<uint32_t>& SPIRV)
+bool StripReflection(std::vector<uint32_t>& SPIRV)
 {
 #if DILIGENT_NO_HLSL
     return true;
@@ -114,12 +115,6 @@ void InitPipelineShaderStages(const VulkanUtilities::VulkanLogicalDevice&       
             auto* pShader = Shaders[i];
             auto& SPIRV   = SPIRVs[i];
 
-            // We have to strip reflection instructions to fix the following validation error:
-            //     SPIR-V module not valid: DecorateStringGOOGLE requires one of the following extensions: SPV_GOOGLE_decorate_string
-            // Optimizer also performs validation and may catch problems with the byte code.
-            if (!StripReflection(LogicalDevice, SPIRV))
-                LOG_ERROR("Failed to strip reflection information from shader '", pShader->GetDesc().Name, "'. This may indicate a problem with the byte code.");
-
             ShaderModuleCI.codeSize = SPIRV.size() * sizeof(uint32_t);
             ShaderModuleCI.pCode    = SPIRV.data();
 
@@ -141,7 +136,8 @@ void CreateComputePipeline(RenderDeviceVkImpl*                           pDevice
                            std::vector<VkPipelineShaderStageCreateInfo>& Stages,
                            const PipelineLayoutVk&                       Layout,
                            const PipelineStateDesc&                      PSODesc,
-                           VulkanUtilities::PipelineWrapper&             Pipeline)
+                           VulkanUtilities::PipelineWrapper&             Pipeline,
+                           VkPipelineCache                               PSOCache)
 {
     const auto& LogicalDevice = pDeviceVk->GetLogicalDevice();
 
@@ -157,7 +153,7 @@ void CreateComputePipeline(RenderDeviceVkImpl*                           pDevice
     PipelineCI.stage  = Stages[0];
     PipelineCI.layout = Layout.GetVkPipelineLayout();
 
-    Pipeline = LogicalDevice.CreateComputePipeline(PipelineCI, VK_NULL_HANDLE, PSODesc.Name);
+    Pipeline = LogicalDevice.CreateComputePipeline(PipelineCI, PSOCache, PSODesc.Name);
 }
 
 
@@ -167,7 +163,8 @@ void CreateGraphicsPipeline(RenderDeviceVkImpl*                           pDevic
                             const PipelineStateDesc&                      PSODesc,
                             const GraphicsPipelineDesc&                   GraphicsPipeline,
                             VulkanUtilities::PipelineWrapper&             Pipeline,
-                            RefCntAutoPtr<IRenderPass>&                   pRenderPass)
+                            RefCntAutoPtr<IRenderPass>&                   pRenderPass,
+                            VkPipelineCache                               PSOCache)
 {
     const auto& LogicalDevice  = pDeviceVk->GetLogicalDevice();
     const auto& PhysicalDevice = pDeviceVk->GetPhysicalDevice();
@@ -354,7 +351,7 @@ void CreateGraphicsPipeline(RenderDeviceVkImpl*                           pDevic
     PipelineCI.basePipelineHandle = VK_NULL_HANDLE; // a pipeline to derive from
     PipelineCI.basePipelineIndex  = -1;             // an index into the pCreateInfos parameter to use as a pipeline to derive from
 
-    Pipeline = LogicalDevice.CreateGraphicsPipeline(PipelineCI, VK_NULL_HANDLE, PSODesc.Name);
+    Pipeline = LogicalDevice.CreateGraphicsPipeline(PipelineCI, PSOCache, PSODesc.Name);
 }
 
 
@@ -364,7 +361,8 @@ void CreateRayTracingPipeline(RenderDeviceVkImpl*                               
                               const PipelineLayoutVk&                                  Layout,
                               const PipelineStateDesc&                                 PSODesc,
                               const RayTracingPipelineDesc&                            RayTracingPipeline,
-                              VulkanUtilities::PipelineWrapper&                        Pipeline)
+                              VulkanUtilities::PipelineWrapper&                        Pipeline,
+                              VkPipelineCache                                          PSOCache)
 {
     const auto& LogicalDevice = pDeviceVk->GetLogicalDevice();
 
@@ -387,7 +385,7 @@ void CreateRayTracingPipeline(RenderDeviceVkImpl*                               
     PipelineCI.basePipelineHandle           = VK_NULL_HANDLE; // a pipeline to derive from
     PipelineCI.basePipelineIndex            = -1;             // an index into the pCreateInfos parameter to use as a pipeline to derive from
 
-    Pipeline = LogicalDevice.CreateRayTracingPipeline(PipelineCI, VK_NULL_HANDLE, PSODesc.Name);
+    Pipeline = LogicalDevice.CreateRayTracingPipeline(PipelineCI, PSOCache, PSODesc.Name);
 }
 
 
@@ -581,7 +579,7 @@ size_t PipelineStateVkImpl::ShaderStageInfo::Count() const
     return Shaders.size();
 }
 
-RefCntAutoPtr<PipelineResourceSignatureVkImpl> PipelineStateVkImpl::CreateDefaultSignature(const TShaderStages& ShaderStages)
+RefCntAutoPtr<PipelineResourceSignatureVkImpl> PipelineStateVkImpl::CreateDefaultSignature(const TShaderStages& ShaderStages) noexcept(false)
 {
     std::unordered_map<ShaderResourceHashKey, const SPIRVShaderResourceAttribs&, ShaderResourceHashKey::Hasher> UniqueResources;
 
@@ -654,21 +652,15 @@ RefCntAutoPtr<PipelineResourceSignatureVkImpl> PipelineStateVkImpl::CreateDefaul
     return TPipelineStateBase::CreateDefaultSignature(Resources, pCombinedSamplerSuffix, pImmutableSamplers, GetActiveShaderStages(), bIsDeviceInternal);
 }
 
-void PipelineStateVkImpl::InitPipelineLayout(TShaderStages& ShaderStages)
+void PipelineStateVkImpl::RemapShaderResources(TShaderStages&                          ShaderStages,
+                                               const PipelineResourceSignatureVkImpl** pSignatures,
+                                               const Uint32                            SignatureCount,
+                                               const TBindIndexToDescSetIndex&         BindIndexToDescSetIndex,
+                                               bool                                    bStripReflection,
+                                               const char*                             PipelineName,
+                                               TShaderResources*                       pDvpShaderResources,
+                                               TResourceAttibutions*                   pDvpResourceAttibutions) noexcept(false)
 {
-    if (m_UsingImplicitSignature)
-    {
-        VERIFY_EXPR(m_SignatureCount == 1);
-        m_Signatures[0] = CreateDefaultSignature(ShaderStages);
-        VERIFY_EXPR(!m_Signatures[0] || m_Signatures[0]->GetDesc().BindingIndex == 0);
-    }
-
-#ifdef DILIGENT_DEVELOPMENT
-    DvpValidateResourceLimits();
-#endif
-
-    m_PipelineLayout.Create(GetDevice(), m_Signatures, m_SignatureCount);
-
     // Verify that pipeline layout is compatible with shader resources and
     // remap resource bindings.
     for (size_t s = 0; s < ShaderStages.size(); ++s)
@@ -685,19 +677,19 @@ void PipelineStateVkImpl::InitPipelineLayout(TShaderStages& ShaderStages)
             auto& SPIRV   = SPIRVs[i];
 
             const auto& pShaderResources = pShader->GetShaderResources();
-#ifdef DILIGENT_DEVELOPMENT
-            m_ShaderResources.emplace_back(pShaderResources);
-#endif
+
+            if (pDvpShaderResources)
+                pDvpShaderResources->emplace_back(pShaderResources);
 
             pShaderResources->ProcessResources(
                 [&](const SPIRVShaderResourceAttribs& SPIRVAttribs, Uint32) //
                 {
-                    auto ResAttribution = GetResourceAttribution(SPIRVAttribs.Name, ShaderType);
+                    auto ResAttribution = GetResourceAttribution(SPIRVAttribs.Name, ShaderType, pSignatures, SignatureCount);
                     if (!ResAttribution)
                     {
                         LOG_ERROR_AND_THROW("Shader '", pShader->GetDesc().Name, "' contains resource '", SPIRVAttribs.Name,
                                             "' that is not present in any pipeline resource signature used to create pipeline state '",
-                                            m_Desc.Name, "'.");
+                                            PipelineName, "'.");
                     }
 
                     const auto& SignDesc = ResAttribution.pSignature->GetDesc();
@@ -736,13 +728,61 @@ void PipelineStateVkImpl::InitPipelineLayout(TShaderStages& ShaderStages)
 
                     VERIFY_EXPR(ResourceBinding != ~0u && DescriptorSet != ~0u);
                     SPIRV[SPIRVAttribs.BindingDecorationOffset]       = ResourceBinding;
-                    SPIRV[SPIRVAttribs.DescriptorSetDecorationOffset] = m_PipelineLayout.GetFirstDescrSetIndex(SignDesc.BindingIndex) + DescriptorSet;
+                    SPIRV[SPIRVAttribs.DescriptorSetDecorationOffset] = BindIndexToDescSetIndex[SignDesc.BindingIndex] + DescriptorSet;
+
+                    if (pDvpResourceAttibutions)
+                        pDvpResourceAttibutions->emplace_back(ResAttribution);
+                });
+
+            if (bStripReflection)
+            {
+                // We have to strip reflection instructions to fix the following validation error:
+                //     SPIR-V module not valid: DecorateStringGOOGLE requires one of the following extensions: SPV_GOOGLE_decorate_string
+                // Optimizer also performs validation and may catch problems with the byte code.
+                if (!StripReflection(SPIRV))
+                    LOG_ERROR("Failed to strip reflection information from shader '", pShader->GetDesc().Name, "'. This may indicate a problem with the byte code.");
+            }
+        }
+    }
+}
+
+void PipelineStateVkImpl::InitPipelineLayout(bool RemapResources, TShaderStages& ShaderStages) noexcept(false)
+{
+    if (m_UsingImplicitSignature)
+    {
+        VERIFY_EXPR(m_SignatureCount == 1);
+        m_Signatures[0] = CreateDefaultSignature(ShaderStages);
+        VERIFY_EXPR(!m_Signatures[0] || m_Signatures[0]->GetDesc().BindingIndex == 0);
+    }
 
 #ifdef DILIGENT_DEVELOPMENT
-                    m_ResourceAttibutions.emplace_back(ResAttribution);
+    DvpValidateResourceLimits();
 #endif
-                });
-        }
+
+    m_PipelineLayout.Create(GetDevice(), m_Signatures, m_SignatureCount);
+
+    if (RemapResources)
+    {
+        TBindIndexToDescSetIndex BindIndexToDescSetIndex = {};
+        for (Uint32 i = 0; i < BindIndexToDescSetIndex.size(); ++i)
+            BindIndexToDescSetIndex[i] = m_PipelineLayout.GetFirstDescrSetIndex(i);
+
+        std::array<const PipelineResourceSignatureVkImpl*, MAX_RESOURCE_SIGNATURES> Signatures = {};
+        for (Uint32 i = 0; i < m_SignatureCount; ++i)
+            Signatures[i] = m_Signatures[i].RawPtr();
+
+        RemapShaderResources(ShaderStages,
+                             Signatures.data(),
+                             m_SignatureCount,
+                             BindIndexToDescSetIndex,
+                             true, // bStripReflection
+                             m_Desc.Name,
+#ifdef DILIGENT_DEVELOPMENT
+                             &m_ShaderResources, &m_ResourceAttibutions
+#else
+                             nullptr, nullptr
+#endif
+        );
     }
 }
 
@@ -750,7 +790,7 @@ template <typename PSOCreateInfoType>
 PipelineStateVkImpl::TShaderStages PipelineStateVkImpl::InitInternalObjects(
     const PSOCreateInfoType&                           CreateInfo,
     std::vector<VkPipelineShaderStageCreateInfo>&      vkShaderStages,
-    std::vector<VulkanUtilities::ShaderModuleWrapper>& ShaderModules)
+    std::vector<VulkanUtilities::ShaderModuleWrapper>& ShaderModules) noexcept(false)
 {
     TShaderStages ShaderStages;
     ExtractShaders<ShaderVkImpl>(CreateInfo, ShaderStages);
@@ -765,7 +805,7 @@ PipelineStateVkImpl::TShaderStages PipelineStateVkImpl::InitInternalObjects(
 
     InitializePipelineDesc(CreateInfo, MemPool);
 
-    InitPipelineLayout(ShaderStages);
+    InitPipelineLayout((CreateInfo.Flags & PSO_CREATE_FLAG_DONT_REMAP_SHADER_RESOURCES) == 0, ShaderStages);
 
     // Create shader modules and initialize shader stages
     InitPipelineShaderStages(LogicalDevice, ShaderStages, ShaderModules, vkShaderStages);
@@ -783,7 +823,8 @@ PipelineStateVkImpl::PipelineStateVkImpl(IReferenceCounters* pRefCounters, Rende
 
         InitInternalObjects(CreateInfo, vkShaderStages, ShaderModules);
 
-        CreateGraphicsPipeline(pDeviceVk, vkShaderStages, m_PipelineLayout, m_Desc, GetGraphicsPipelineDesc(), m_Pipeline, GetRenderPassPtr());
+        CreateGraphicsPipeline(pDeviceVk, vkShaderStages, m_PipelineLayout, m_Desc, GetGraphicsPipelineDesc(), m_Pipeline, GetRenderPassPtr(),
+                               CreateInfo.pPSOCache ? ClassPtrCast<PSOCacheVkImpl>(CreateInfo.pPSOCache)->GetVkPipelineCache() : nullptr);
     }
     catch (...)
     {
@@ -802,7 +843,8 @@ PipelineStateVkImpl::PipelineStateVkImpl(IReferenceCounters* pRefCounters, Rende
 
         InitInternalObjects(CreateInfo, vkShaderStages, ShaderModules);
 
-        CreateComputePipeline(pDeviceVk, vkShaderStages, m_PipelineLayout, m_Desc, m_Pipeline);
+        CreateComputePipeline(pDeviceVk, vkShaderStages, m_PipelineLayout, m_Desc, m_Pipeline,
+                              CreateInfo.pPSOCache ? ClassPtrCast<PSOCacheVkImpl>(CreateInfo.pPSOCache)->GetVkPipelineCache() : nullptr);
     }
     catch (...)
     {
@@ -825,7 +867,8 @@ PipelineStateVkImpl::PipelineStateVkImpl(IReferenceCounters* pRefCounters, Rende
 
         const auto vkShaderGroups = BuildRTShaderGroupDescription(CreateInfo, m_pRayTracingPipelineData->NameToGroupIndex, ShaderStages);
 
-        CreateRayTracingPipeline(pDeviceVk, vkShaderStages, vkShaderGroups, m_PipelineLayout, m_Desc, GetRayTracingPipelineDesc(), m_Pipeline);
+        CreateRayTracingPipeline(pDeviceVk, vkShaderStages, vkShaderGroups, m_PipelineLayout, m_Desc, GetRayTracingPipelineDesc(), m_Pipeline,
+                                 CreateInfo.pPSOCache ? ClassPtrCast<PSOCacheVkImpl>(CreateInfo.pPSOCache)->GetVkPipelineCache() : nullptr);
 
         VERIFY(m_pRayTracingPipelineData->NameToGroupIndex.size() == vkShaderGroups.size(),
                "The size of NameToGroupIndex map does not match the actual number of groups in the pipeline. This is a bug.");

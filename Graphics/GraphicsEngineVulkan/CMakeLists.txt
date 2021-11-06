@@ -12,6 +12,7 @@ set(INCLUDE
     include/DescriptorPoolManager.hpp
     include/DeviceContextVkImpl.hpp
     include/DeviceMemoryVkImpl.hpp
+    include/DeviceObjectArchiveVkImpl.hpp
     include/EngineVkImplTraits.hpp
     include/FenceVkImpl.hpp
     include/FramebufferVkImpl.hpp
@@ -23,12 +24,14 @@ set(INCLUDE
     include/PipelineStateVkImpl.hpp
     include/PipelineResourceSignatureVkImpl.hpp
     include/PipelineResourceAttribsVk.hpp
+    include/PSOCacheVkImpl.hpp
     include/QueryManagerVk.hpp
     include/QueryVkImpl.hpp
     include/RenderDeviceVkImpl.hpp
     include/RenderPassVkImpl.hpp
     include/RenderPassCache.hpp
     include/SamplerVkImpl.hpp
+    include/SerializationAPIVkImpl.hpp
     include/ShaderVkImpl.hpp
     include/ShaderResourceBindingVkImpl.hpp
     include/ShaderResourceCacheVk.hpp
@@ -69,6 +72,7 @@ set(INTERFACE
     interface/FenceVk.h
     interface/FramebufferVk.h
     interface/PipelineStateVk.h
+    interface/PSOCacheVk.h
     interface/QueryVk.h
     interface/RenderDeviceVk.h
     interface/RenderPassVk.h
@@ -92,6 +96,7 @@ set(SRC
     src/DescriptorPoolManager.cpp
     src/DeviceContextVkImpl.cpp
     src/DeviceMemoryVkImpl.cpp
+    src/DeviceObjectArchiveVkImpl.cpp
     src/EngineFactoryVk.cpp
     src/FenceVkImpl.cpp
     src/FramebufferVkImpl.cpp
@@ -100,12 +105,14 @@ set(SRC
     src/PipelineLayoutVk.cpp
     src/PipelineStateVkImpl.cpp
     src/PipelineResourceSignatureVkImpl.cpp
+    src/PSOCacheVkImpl.cpp
     src/QueryManagerVk.cpp
     src/QueryVkImpl.cpp
     src/RenderDeviceVkImpl.cpp
     src/RenderPassVkImpl.cpp
     src/RenderPassCache.cpp
     src/SamplerVkImpl.cpp
+    src/SerializationAPIVkImpl.cpp
     src/ShaderVkImpl.cpp
     src/ShaderResourceBindingVkImpl.cpp
     src/ShaderResourceCacheVk.cpp
